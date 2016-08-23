@@ -20,6 +20,7 @@ type Test struct {
 
 func main()  {    
     file, err := xlsxt.OpenTemplate("example.xlsx")
+    file.SetFontDir("./fonts")
     if err != nil {
         fmt.Println(err)
         return
@@ -33,6 +34,12 @@ func main()  {
         fmt.Println(err)
         return
     }
-    file.Save("result.xlsx")   
-    file.SaveToPDF("result.pdf")
+    err = file.Save("result.xlsx")
+    if err != nil {
+        fmt.Println(err)
+    }
+    err = file.SaveToPDF("result.pdf")
+    if err != nil {
+        fmt.Println(err)
+    }
 }

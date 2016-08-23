@@ -1,15 +1,17 @@
 package xlsxt
 
 import (
-    "io"        
+    "io"
+    //"os"
     "fmt"
     "errors"
     "regexp"
     "reflect"
     "strings"   
-    "strconv"     
+    "strconv"   
+    //"runtime"
     "github.com/tealeg/xlsx"
-    "github.com/jung-kurt/gofpdf"
+    "github.com/signintech/gopdf"
     "github.com/aymerick/raymond"
 )
 
@@ -23,6 +25,12 @@ var (
 type XlsxTemplateFile struct {
     template *xlsx.File
     result *xlsx.File
+    fontDir string
+}
+
+// SetFontDir (XlsxTemplateFile)
+func (s *XlsxTemplateFile) SetFontDir(path string) {
+    s.fontDir = path
 }
 
 // Save (XlsxTemplateFile) - сохраняем результат
@@ -37,29 +45,37 @@ func (s *XlsxTemplateFile) Save(path string) error {
 
 // SaveToPDF (XlsxTemplateFile) - сохраняем результат в PDF
 func (s *XlsxTemplateFile) SaveToPDF(path string) error {
-    var pdf *gofpdf.Fpdf
+    var pdf *gopdf.GoPdf
 	if s.result != nil {
-        pdf = convertXlsxToPdf(s.result)		
+        pdf = convertXlsxToPdf(s.result, s.fontDir)
     } else if s.template != nil {
-        pdf = convertXlsxToPdf(s.template)
+        pdf = convertXlsxToPdf(s.template, s.fontDir)
     }
-    if pdf != nil {
-        return pdf.OutputFileAndClose(path)
+    if pdf != nil {        
+        pdf.WritePdf(path)
+        return nil
     }
     return errors.New("Not load template xlsx file")
 }
 
 // WriteToPDF (XlsxTemplateFile) - пишем результат в io.Writer
 func (s *XlsxTemplateFile) WriteToPDF(writer io.Writer) error {
-    var pdf *gofpdf.Fpdf
+    var pdf *gopdf.GoPdf
 	if s.result != nil {
-        pdf = convertXlsxToPdf(s.result)		
+        pdf = convertXlsxToPdf(s.result, s.fontDir)
     } else if s.template != nil {
-        pdf = convertXlsxToPdf(s.template)
+        pdf = convertXlsxToPdf(s.template, s.fontDir)
     }
     if pdf != nil {
-        defer pdf.Close()
-        return pdf.Output(writer)
+        bytes, err := pdf.GetBytesPdfReturnErr()
+        if err != nil {
+            return err
+        }
+        _, err = writer.Write(bytes)
+        if err != nil {
+            return err
+        }
+        return nil 
     }
     return errors.New("Not load template xlsx file")
 }
@@ -96,41 +112,89 @@ func removeMergeCells(file *xlsx.File) {
 }
 
 // convertXlsxToPdf - конвертирование XLSX в PDF
-func convertXlsxToPdf(file *xlsx.File) *gofpdf.Fpdf {
+func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
     removeMergeCells(file)
-    if file != nil {
-        pdf := gofpdf.New("L", "mm", "A4", "")        
+    if file != nil {        
+        pdf := gopdf.GoPdf{}
+        w, h := 841.89, 595.28        
+        pdf.Start(gopdf.Config{Unit: "pt", PageSize: gopdf.Rect{W: w, H: h}})        
+        var addFonts = make(map[string]bool)
         for _, sheet := range file.Sheets {
-            pdf.AddPage(); pdf.SetXY(0,0)
-            w, h := pdf.GetPageSize()
-            x, y, k := 0.0, 0.0, w/getSheetWidth(sheet)                    
+            pdf.AddPage()
+            pdf.SetX(0);pdf.SetY(0)            
+            x, y, kW := 0.0, 0.0, w/getSheetWidth(sheet)
             for _, row := range sheet.Rows {
                 cellHeigth := row.Height
                 for i, cell := range row.Cells {
-                    cellWidth := sheet.Cols[i].Width*k
+                    cellWidth := sheet.Cols[i].Width*kW
                     if len(strings.TrimSpace(cell.Value)) > 0 {
                         style := cell.GetStyle()
                         if style != nil {
-                            pdf.SetFont(style.Font.Name, getPdfFontStyleFromXLSXStyle(style), float64(style.Font.Size))
+                            if !addFonts[style.Font.Name] {
+                                err := pdf.AddTTFFont(style.Font.Name, fontDir+"/"+style.Font.Name+".ttf")
+                                if err != nil {
+                                    fmt.Println(err)
+                                    return nil
+                                }
+                                addFonts[style.Font.Name] = true
+                            }
+                            err := pdf.SetFont(style.Font.Name, getPdfFontStyleFromXLSXStyle(style), style.Font.Size)
+                            if err != nil {
+                                fmt.Println(err)
+                                return nil
+                            }
                         }
-                        mergeWidth, mergeHeight := getMergeSizesFromCell(cell)
-                        pdf.CellFormat(cellWidth+mergeWidth*k, cellHeigth+mergeHeight, cell.Value,
-                                       getPdfCellBorderFromXLSXStyle(style), 0, 
-                                       getPdfCellAlignFromXLSXStyle(style), false, 0, "")
-
+                        mergeWidth, mergeHeight := getMergeSizesFromCell(cell)                                                                                          
+                        pdf.CellWithOption(&gopdf.Rect{
+                            W: cellWidth+mergeWidth*kW,
+                            H: cellHeigth+mergeHeight}, cell.Value, toPdfCellOption(style))                            
                     }                 
                     x += cellWidth; pdf.SetX(x)
                 }
                 y += cellHeigth; x = 0.0                 
                 if y > h {
                     y = 0.0; pdf.AddPage()                    
-                }
-                pdf.SetXY(x, y)
+                }                
+                pdf.SetX(x);pdf.SetY(y)
             }
         }
-        return pdf
+        return &pdf
     }
     return nil
+}
+
+func toPdfCellOption(style *xlsx.Style) gopdf.CellOption {
+    opt := gopdf.CellOption{}
+    if style != nil {        
+        if style.Alignment.Horizontal == "center" {
+            opt.Align = opt.Align | gopdf.Center
+        } else if style.Alignment.Horizontal == "left" {
+            opt.Align = opt.Align | gopdf.Left
+        } else if style.Alignment.Horizontal == "right" {
+            opt.Align = opt.Align | gopdf.Right
+        }
+        if style.Alignment.Vertical == "center" {
+            opt.Align = opt.Align | gopdf.Middle
+        } else if style.Alignment.Vertical == "top" {
+            opt.Align = opt.Align | gopdf.Top
+        } else if style.Alignment.Vertical == "bottom" {
+            opt.Align = opt.Align | gopdf.Bottom
+        }   
+        //gopdf.Left | gopdf.Right | gopdf.Top | gopdf.Bottom
+        if len(style.Border.Bottom) > 0 && style.Border.Bottom != "none" {
+            opt.Border = opt.Border | gopdf.Bottom
+        }
+        if len(style.Border.Top) > 0 && style.Border.Top != "none" {
+            opt.Border = opt.Border | gopdf.Top
+        }  
+        if len(style.Border.Left) > 0 && style.Border.Left != "none" {
+            opt.Border = opt.Border | gopdf.Left
+        }
+        if len(style.Border.Right) > 0 && style.Border.Right != "none" {
+            opt.Border = opt.Border | gopdf.Right
+        }
+    }
+    return opt
 }
 
 func getMergeSizesFromCell(cell *xlsx.Cell) (w, h float64) {
@@ -164,54 +228,16 @@ func getMergeSizesFromCell(cell *xlsx.Cell) (w, h float64) {
 func getPdfFontStyleFromXLSXStyle(style *xlsx.Style) string {
     if style != nil {
         fontStyle := ""
-        if style.Font.Bold {
-            if len(fontStyle) > 0 {
-                fontStyle += " "
-            }
+        if style.Font.Bold {        
             fontStyle += "B"
         }
-        if style.Font.Italic {
-            if len(fontStyle) > 0 {
-                fontStyle += " "
-            }
+        if style.Font.Italic {            
             fontStyle += "I"
         }
-        if style.Font.Underline {
-            if len(fontStyle) > 0 {
-                fontStyle += " "
-            }
+        if style.Font.Underline {            
             fontStyle += "U"
-        }
+        }        
         return fontStyle
-    }
-    return ""
-}
-
-func getPdfCellAlignFromXLSXStyle(style *xlsx.Style) string {
-    if style != nil {
-        var result string 
-        if style.Alignment.Horizontal == "center" {
-            result = "C"
-        } else if style.Alignment.Horizontal == "right" {
-            result = "R"
-        } else {
-            result = "L"
-        }
-        if style.Alignment.Vertical == "top" {
-            result += " T"
-        } else if style.Alignment.Vertical == "top" {
-            result += " B"
-        } else {
-            result += " M"
-        }
-        return result
-    }
-    return "L M"
-}
-
-func getPdfCellBorderFromXLSXStyle(style *xlsx.Style) string {
-    if style != nil {
-
     }
     return ""
 }
@@ -220,8 +246,12 @@ func getPdfCellBorderFromXLSXStyle(style *xlsx.Style) string {
 func getSheetWidth(sheet *xlsx.Sheet) float64 {
     width := 0.0
     if sheet != nil {
-        for _, col := range sheet.Cols {
-            width += col.Width
+        for i, col := range sheet.Cols {
+            if i < sheet.MaxCol {
+                width += col.Width   
+            } else {
+                break
+            }      
         }
     }
     if width > 0.0 {
