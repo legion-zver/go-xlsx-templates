@@ -34,4 +34,5 @@ func main()  {
         return
     }
     file.Save("result.xlsx")   
+    file.SaveToPDF("result.pdf")
 }

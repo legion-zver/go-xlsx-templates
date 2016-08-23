@@ -1,14 +1,15 @@
 package xlsxt
 
 import (
-    "io"    
+    "io"        
     "fmt"
     "errors"
     "regexp"
     "reflect"
     "strings"   
-    "strconv" 
+    "strconv"     
     "github.com/tealeg/xlsx"
+    "github.com/jung-kurt/gofpdf"
     "github.com/aymerick/raymond"
 )
 
@@ -34,7 +35,203 @@ func (s *XlsxTemplateFile) Save(path string) error {
     return errors.New("Not load template xlsx file")
 }
 
-// Save (XlsxTemplateFile) - пишем результат в io.Writer
+// SaveToPDF (XlsxTemplateFile) - сохраняем результат в PDF
+func (s *XlsxTemplateFile) SaveToPDF(path string) error {
+    var pdf *gofpdf.Fpdf
+	if s.result != nil {
+        pdf = convertXlsxToPdf(s.result)		
+    } else if s.template != nil {
+        pdf = convertXlsxToPdf(s.template)
+    }
+    if pdf != nil {
+        return pdf.OutputFileAndClose(path)
+    }
+    return errors.New("Not load template xlsx file")
+}
+
+// WriteToPDF (XlsxTemplateFile) - пишем результат в io.Writer
+func (s *XlsxTemplateFile) WriteToPDF(writer io.Writer) error {
+    var pdf *gofpdf.Fpdf
+	if s.result != nil {
+        pdf = convertXlsxToPdf(s.result)		
+    } else if s.template != nil {
+        pdf = convertXlsxToPdf(s.template)
+    }
+    if pdf != nil {
+        defer pdf.Close()
+        return pdf.Output(writer)
+    }
+    return errors.New("Not load template xlsx file")
+}
+
+// removeMergeCells
+func removeMergeCells(file *xlsx.File) {
+    if file != nil {
+        for _, sheet := range file.Sheets {
+            for rowIndex, row := range sheet.Rows {
+                for cellIndex, cell := range row.Cells {
+                    if cell.HMerge > 0 {
+                        for x := 1; x <= cell.HMerge; x++ {
+                            c := row.Cells[cellIndex+x]
+                            if c != nil {
+                                c.Value = ""
+                            }
+                        }
+                    }
+                    if cell.VMerge > 0 {
+                        for y := 1; y <= cell.VMerge; y++ {
+                            r := sheet.Rows[rowIndex+y]
+                            if r != nil {
+                                c := r.Cells[cellIndex]
+                                if c != nil {
+                                    c.Value = ""
+                                }                                
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// convertXlsxToPdf - конвертирование XLSX в PDF
+func convertXlsxToPdf(file *xlsx.File) *gofpdf.Fpdf {
+    removeMergeCells(file)
+    if file != nil {
+        pdf := gofpdf.New("L", "mm", "A4", "")        
+        for _, sheet := range file.Sheets {
+            pdf.AddPage(); pdf.SetXY(0,0)
+            w, h := pdf.GetPageSize()
+            x, y, k := 0.0, 0.0, w/getSheetWidth(sheet)                    
+            for _, row := range sheet.Rows {
+                cellHeigth := row.Height
+                for i, cell := range row.Cells {
+                    cellWidth := sheet.Cols[i].Width*k
+                    if len(strings.TrimSpace(cell.Value)) > 0 {
+                        style := cell.GetStyle()
+                        if style != nil {
+                            pdf.SetFont(style.Font.Name, getPdfFontStyleFromXLSXStyle(style), float64(style.Font.Size))
+                        }
+                        mergeWidth, mergeHeight := getMergeSizesFromCell(cell)
+                        pdf.CellFormat(cellWidth+mergeWidth*k, cellHeigth+mergeHeight, cell.Value,
+                                       getPdfCellBorderFromXLSXStyle(style), 0, 
+                                       getPdfCellAlignFromXLSXStyle(style), false, 0, "")
+
+                    }                 
+                    x += cellWidth; pdf.SetX(x)
+                }
+                y += cellHeigth; x = 0.0                 
+                if y > h {
+                    y = 0.0; pdf.AddPage()                    
+                }
+                pdf.SetXY(x, y)
+            }
+        }
+        return pdf
+    }
+    return nil
+}
+
+func getMergeSizesFromCell(cell *xlsx.Cell) (w, h float64) {
+    w, h = 0.0, 0.0
+    if cell != nil {
+        sheet := cell.Row.Sheet
+        if sheet != nil {
+            cellIndex := indexCell(cell)
+            rowIndex  := indexRow(cell.Row)
+            if cell.HMerge > 0 {
+                for x := 1; x <= cell.HMerge; x++ {
+                    col := sheet.Cols[cellIndex+x]
+                    if col != nil {
+                        w += col.Width
+                    }
+                }  
+            }
+            if cell.VMerge > 0 {
+                for y := 1; y <= cell.VMerge; y++ {
+                    row := sheet.Rows[rowIndex+y]
+                    if row != nil {
+                        h += row.Height
+                    }
+                }
+            }
+        }
+    }
+    return
+}
+
+func getPdfFontStyleFromXLSXStyle(style *xlsx.Style) string {
+    if style != nil {
+        fontStyle := ""
+        if style.Font.Bold {
+            if len(fontStyle) > 0 {
+                fontStyle += " "
+            }
+            fontStyle += "B"
+        }
+        if style.Font.Italic {
+            if len(fontStyle) > 0 {
+                fontStyle += " "
+            }
+            fontStyle += "I"
+        }
+        if style.Font.Underline {
+            if len(fontStyle) > 0 {
+                fontStyle += " "
+            }
+            fontStyle += "U"
+        }
+        return fontStyle
+    }
+    return ""
+}
+
+func getPdfCellAlignFromXLSXStyle(style *xlsx.Style) string {
+    if style != nil {
+        var result string 
+        if style.Alignment.Horizontal == "center" {
+            result = "C"
+        } else if style.Alignment.Horizontal == "right" {
+            result = "R"
+        } else {
+            result = "L"
+        }
+        if style.Alignment.Vertical == "top" {
+            result += " T"
+        } else if style.Alignment.Vertical == "top" {
+            result += " B"
+        } else {
+            result += " M"
+        }
+        return result
+    }
+    return "L M"
+}
+
+func getPdfCellBorderFromXLSXStyle(style *xlsx.Style) string {
+    if style != nil {
+
+    }
+    return ""
+}
+
+// getSheetWidth - длина sheet (сумма длин всех колонок)
+func getSheetWidth(sheet *xlsx.Sheet) float64 {
+    width := 0.0
+    if sheet != nil {
+        for _, col := range sheet.Cols {
+            width += col.Width
+        }
+    }
+    if width > 0.0 {
+        return width
+    }
+    return 1.0
+}
+
+
+// Write (XlsxTemplateFile) - пишем результат в io.Writer
 func (s *XlsxTemplateFile) Write(writer io.Writer) error {
     if s.result != nil {
         return s.result.Write(writer)
@@ -112,11 +309,7 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
 
 /* Вспомогательные функции */
 
-type cacheMergeCell struct {
-
-}
-
-// node - элмент графа
+// node - элeмент графа
 type node struct {
     name     string
     values   map[string]interface{}    

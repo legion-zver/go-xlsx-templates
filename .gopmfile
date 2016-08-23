@@ -1,3 +1,4 @@
 [deps]
 github.com/tealeg/xlsx = 
 github.com/aymerick/raymond = 
+github.com/jung-kurt/gofpdf = 
