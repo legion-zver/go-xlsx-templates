@@ -218,7 +218,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                             }
                         }                                                    
                     }                 
-                    x += cellWidth; pdf.SetX(x)
+                    x += cellWidth; pdf.SetX(x); pdf.SetY(y)
                 }
                 y += cellHeigth; x = 0.0                 
                 if y+cellHeigth >= h {
