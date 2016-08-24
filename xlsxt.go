@@ -5,11 +5,11 @@ import (
     "fmt"
     "errors"
     "regexp"
-    "reflect"
+    "reflect"    
     "strings"   
     "strconv"       
     "github.com/tealeg/xlsx"
-    "github.com/signintech/gopdf"
+    "github.com/legion-zver/gopdf"
     "github.com/aymerick/raymond"
 )
 
@@ -150,6 +150,8 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                 cellWidth := (sheet.Cols[i].Width+mergeWidth)*kW
                                 if textWidth, err := pdf.MeasureTextWidth(cell.Value); err == nil {                            
                                     if textWidth > cellWidth {
+                                        // Меняем выравнивание
+                                        style.Alignment.Vertical = "top"
                                         // Разбиваем по словам и начинаем сложение                                        
                                         words := strings.Split(cell.Value, " ")
                                         line  := ""; countLines := 1; cell.Value = ""
@@ -211,10 +213,16 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                             if lineIndex < 1 {
                                 pdf.CellWithOption(&gopdf.Rect{
                                 W: cellWidth+mergeWidth*kW,
-                                H: cellHeigth+mergeHeight}, line, toPdfCellOption(style))
+                                H: cellHeigth+mergeHeight}, line, toPdfCellOption(style, false))
                             } else {
-                                pdf.Br(float64(style.Font.Size)); pdf.SetX(x)
-                                pdf.Text(line)
+                                if _,h, err := pdf.MeasureText(line); err == nil {
+                                    pdf.Br(h);pdf.SetX(x)
+                                    pdf.CellWithOption(&gopdf.Rect{
+                                    W: cellWidth+mergeWidth*kW, H: h}, line, toPdfCellOption(style, false))
+                                } else {
+                                    pdf.Br(float64(style.Font.Size));pdf.SetX(x)
+                                    pdf.Text(line)
+                                }                                                                                                
                             }
                         }                                                    
                     }                 
@@ -232,7 +240,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
     return nil
 }
 
-func toPdfCellOption(style *xlsx.Style) gopdf.CellOption {
+func toPdfCellOption(style *xlsx.Style, skipBorder bool) gopdf.CellOption {
     opt := gopdf.CellOption{}
     if style != nil {
         if style.Alignment.Horizontal == "center" {
@@ -248,18 +256,20 @@ func toPdfCellOption(style *xlsx.Style) gopdf.CellOption {
             opt.Align = opt.Align | gopdf.Top
         } else if style.Alignment.Vertical == "bottom" {
             opt.Align = opt.Align | gopdf.Bottom
-        }        
-        if len(style.Border.Bottom) > 0 && style.Border.Bottom != "none" {
-            opt.Border = opt.Border | gopdf.Bottom
-        }
-        if len(style.Border.Top) > 0 && style.Border.Top != "none" {
-            opt.Border = opt.Border | gopdf.Top
-        }  
-        if len(style.Border.Left) > 0 && style.Border.Left != "none" {
-            opt.Border = opt.Border | gopdf.Left
-        }
-        if len(style.Border.Right) > 0 && style.Border.Right != "none" {
-            opt.Border = opt.Border | gopdf.Right
+        }       
+        if !skipBorder { 
+            if len(style.Border.Bottom) > 0 && style.Border.Bottom != "none" {
+                opt.Border = opt.Border | gopdf.Bottom
+            }
+            if len(style.Border.Top) > 0 && style.Border.Top != "none" {
+                opt.Border = opt.Border | gopdf.Top
+            }  
+            if len(style.Border.Left) > 0 && style.Border.Left != "none" {
+                opt.Border = opt.Border | gopdf.Left
+            }
+            if len(style.Border.Right) > 0 && style.Border.Right != "none" {
+                opt.Border = opt.Border | gopdf.Right
+            }
         }
     }
     return opt
