@@ -221,8 +221,9 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                 W: cellWidth+mergeWidth*kW,
                                 H: cellHeigth+mergeHeight}, line, toPdfCellOption(style, false))
                             } else {
-                                if _,h, err := pdf.MeasureText(line); err == nil {
+                                if _,h, err := pdf.MeasureText(line); err == nil {                                    
                                     pdf.Br(h);pdf.SetX(x)
+                                    
                                     pdf.CellWithOption(&gopdf.Rect{
                                     W: cellWidth+mergeWidth*kW, H: h}, line, toPdfCellOption(style, true))
                                 } else {
