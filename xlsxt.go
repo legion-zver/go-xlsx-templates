@@ -312,13 +312,7 @@ func getMergeSizesFromCell(cell *xlsx.Cell) (w, h float64) {
 
 func getPdfFontStyleFromXLSXStyle(style *xlsx.Style) string {
     if style != nil {
-        fontStyle := ""
-        if style.Font.Bold {        
-            fontStyle += "B"
-        }
-        if style.Font.Italic {            
-            fontStyle += "I"
-        }
+        fontStyle := ""        
         if style.Font.Underline {            
             fontStyle += "U"
         }        
