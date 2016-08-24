@@ -336,6 +336,7 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
             graph = nil
 
             // Убираем индексы
+            /*
             for _,row := range newSheet.Rows {
                 for _,cell := range row.Cells {
                     if cell != nil {
@@ -344,7 +345,7 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
                         }
                     }
                 }
-            }            
+            }*/           
         }
         return nil
     }
