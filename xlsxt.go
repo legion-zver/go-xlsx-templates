@@ -211,7 +211,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
 }
 
 func toPdfCellOption(style *xlsx.Style) gopdf.CellOption {
-    opt := gopdf.CellOption{Float: gopdf.Right- }
+    opt := gopdf.CellOption{Float: gopdf.Right }
     if style != nil {
         if style.Alignment.Horizontal == "center" {
             opt.Align = opt.Align | gopdf.Center
