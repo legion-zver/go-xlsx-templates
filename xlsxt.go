@@ -18,7 +18,7 @@ import (
 var (
     rxTemplateItem  = regexp.MustCompile(`\{\{\s*([\w|\.]+)\s*\}\}`)
 	rxMergeCellV    = regexp.MustCompile(`\[\s?v-merge\s?\]`)
-    rxMergeIndex    = regexp.MustCompile(`\[\s?[\d|\.|\,]+\s?\]`)
+    rxMergeIndex    = regexp.MustCompile(`\[\s?index\s?:\s?[\d|\.|\,]+\s?\]`)
 )
 
 
@@ -335,8 +335,7 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
             }
             graph = nil
 
-            // Убираем индексы
-            /*
+            // Убираем индексы [index:1]            
             for _,row := range newSheet.Rows {
                 for _,cell := range row.Cells {
                     if cell != nil {
@@ -345,7 +344,7 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
                         }
                     }
                 }
-            }*/           
+            }         
         }
         return nil
     }
