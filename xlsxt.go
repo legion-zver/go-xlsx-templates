@@ -146,33 +146,47 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                             }
                             // Только для WrapText
                             if style.Alignment.WrapText {                       
-                                mergeWidth, _ := getMergeSizesFromCell(cell)
+                                mergeWidth, mergeHeight := getMergeSizesFromCell(cell)
                                 cellWidth := (sheet.Cols[i].Width+mergeWidth)*kW
                                 if textWidth, err := pdf.MeasureTextWidth(cell.Value); err == nil {                            
                                     if textWidth > cellWidth {
-                                        // Разбиваем по словам и начинаем сложение
+                                        // Разбиваем по словам и начинаем сложение                                        
                                         words := strings.Split(cell.Value, " ")
-                                        newValue := ""
+                                        line  := ""; countLines := 1; cell.Value = ""
                                         for _, word := range words {
-                                            if newTextWidth, err := pdf.MeasureTextWidth(newValue+" "+word); err == nil {
-                                                if newTextWidth > cellWidth {
-                                                    if len(newValue) > 0 {
-                                                        newValue += " \r\n"
+                                            if tw, err := pdf.MeasureTextWidth(line+" "+word); err == nil {
+                                                if tw > cellWidth {
+                                                    countLines++
+                                                    if len(cell.Value) > 0 {
+                                                        cell.Value += "\n"
                                                     }
+                                                    cell.Value += line
+                                                    line = word
                                                 } else {
-                                                    if len(newValue) > 0 {
-                                                        newValue += " "
+                                                    if len(line) > 0 {
+                                                        line += " "
                                                     }
+                                                    line += word
                                                 }
-                                                newValue += word
                                             } else {
-                                                if len(newValue) > 0 {
-                                                    newValue += " "
+                                                if len(line) > 0 {
+                                                    line += " "
                                                 }
-                                                newValue += word
-                                            }                                      
+                                                line += word
+                                            }                                            
                                         }
-                                        cell.Value = newValue
+                                        if len(line) > 0 {
+                                            countLines++
+                                            if len(cell.Value) > 0 {
+                                                cell.Value += "\n"
+                                            }
+                                            cell.Value += line
+                                            line = ""
+                                        }
+                                        // Проверка высоты
+                                        if float64(style.Font.Size * countLines) > row.Height+mergeHeight {
+                                            row.Height = float64(style.Font.Size * countLines)-mergeHeight
+                                        }
                                     }                                
                                 }
                             }
@@ -192,9 +206,17 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                             }
                         }
                         mergeWidth, mergeHeight := getMergeSizesFromCell(cell)
-                        pdf.CellWithOption(&gopdf.Rect{
-                            W: cellWidth+mergeWidth*kW,
-                            H: cellHeigth+mergeHeight}, cell.Value, toPdfCellOption(style))                            
+                        lines := strings.Split(cell.Value, "\n")
+                        for lineIndex, line := range lines {
+                            if lineIndex < 1 {
+                                pdf.CellWithOption(&gopdf.Rect{
+                                W: cellWidth+mergeWidth*kW,
+                                H: cellHeigth+mergeHeight}, line, toPdfCellOption(style))
+                            } else {
+                                pdf.Br(float64(style.Font.Size))
+                                pdf.Text(line)
+                            }
+                        }                                                    
                     }                 
                     x += cellWidth; pdf.SetX(x)
                 }
@@ -211,7 +233,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
 }
 
 func toPdfCellOption(style *xlsx.Style) gopdf.CellOption {
-    opt := gopdf.CellOption{Float: gopdf.Right }
+    opt := gopdf.CellOption{}
     if style != nil {
         if style.Alignment.Horizontal == "center" {
             opt.Align = opt.Align | gopdf.Center
