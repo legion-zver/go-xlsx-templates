@@ -213,7 +213,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                 W: cellWidth+mergeWidth*kW,
                                 H: cellHeigth+mergeHeight}, line, toPdfCellOption(style))
                             } else {
-                                pdf.Br(float64(style.Font.Size))
+                                pdf.Br(float64(style.Font.Size)); pdf.SetX(x)
                                 pdf.Text(line)
                             }
                         }                                                    
