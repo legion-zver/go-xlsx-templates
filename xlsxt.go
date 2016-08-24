@@ -154,11 +154,14 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                         style.Alignment.Vertical = "top"
                                         // Разбиваем по словам и начинаем сложение                                        
                                         words := strings.Split(cell.Value, " ")
-                                        line  := ""; countLines := 1; cell.Value = ""
+                                        line  := ""; height := 0.0; cell.Value = ""
                                         for _, word := range words {
-                                            if tw, err := pdf.MeasureTextWidth(line+" "+word); err == nil {
+                                            if tw, h, err := pdf.MeasureText(line+" "+word); err == nil {
                                                 if tw > cellWidth {
-                                                    countLines++
+                                                    if height == 0 {
+                                                        height = h
+                                                    }
+                                                    height += h
                                                     if len(cell.Value) > 0 {
                                                         cell.Value += "\n"
                                                     }
@@ -178,7 +181,10 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                             }                                            
                                         }
                                         if len(line) > 0 {
-                                            countLines++
+                                            if height == 0 {
+                                                height = h
+                                            }
+                                            height += h
                                             if len(cell.Value) > 0 {
                                                 cell.Value += "\n"
                                             }
@@ -186,8 +192,8 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                             line = ""
                                         }
                                         // Проверка высоты
-                                        if float64(style.Font.Size * countLines) > row.Height+mergeHeight {
-                                            row.Height = float64(style.Font.Size * countLines)-mergeHeight
+                                        if height > row.Height+mergeHeight {
+                                            row.Height = height-mergeHeight
                                         }
                                     }                                
                                 }
