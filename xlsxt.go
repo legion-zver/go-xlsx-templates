@@ -257,7 +257,7 @@ func toPdfCellOption(style *xlsx.Style, skipBorder bool) gopdf.CellOption {
         } else if style.Alignment.Horizontal == "right" {
             opt.Align = opt.Align | gopdf.Right
         }
-        if style.Alignment.Vertical == "center" {
+        if style.Alignment.Vertical == "center" || style.Alignment.Vertical == "middle" {
             opt.Align = opt.Align | gopdf.Middle
         } else if style.Alignment.Vertical == "top" {
             opt.Align = opt.Align | gopdf.Top
