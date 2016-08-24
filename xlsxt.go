@@ -18,6 +18,7 @@ import (
 var (
     rxTemplateItem  = regexp.MustCompile(`\{\{\s*([\w|\.]+)\s*\}\}`)
 	rxMergeCellV    = regexp.MustCompile(`\[\s?v-merge\s?\]`)
+    rxMergeIndex    = regexp.MustCompile(`\[\s?[\d|\.|\,]+\s?\]`)
 )
 
 
@@ -91,6 +92,7 @@ func removeMergeCells(file *xlsx.File) {
                             c := row.Cells[cellIndex+x]
                             if c != nil {
                                 c.Value = ""
+                                c.Hidden = true
                             }
                         }
                     }
@@ -101,6 +103,7 @@ func removeMergeCells(file *xlsx.File) {
                                 c := r.Cells[cellIndex]
                                 if c != nil {
                                     c.Value = ""
+                                    c.Hidden = true
                                 }                                
                             }
                         }
@@ -127,7 +130,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                 cellHeigth := row.Height
                 for i, cell := range row.Cells {
                     cellWidth := sheet.Cols[i].Width*kW
-                    if len(strings.TrimSpace(cell.Value)) > 0 {
+                    if !cell.Hidden {
                         style := cell.GetStyle()
                         if style != nil {
                             if !addFonts[style.Font.Name] {
@@ -179,8 +182,7 @@ func toPdfCellOption(style *xlsx.Style) gopdf.CellOption {
             opt.Align = opt.Align | gopdf.Top
         } else if style.Alignment.Vertical == "bottom" {
             opt.Align = opt.Align | gopdf.Bottom
-        }   
-        //gopdf.Left | gopdf.Right | gopdf.Top | gopdf.Bottom
+        }        
         if len(style.Border.Bottom) > 0 && style.Border.Bottom != "none" {
             opt.Border = opt.Border | gopdf.Bottom
         }
@@ -330,7 +332,18 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
                     }
                 }
             }
-            graph = nil            
+            graph = nil
+
+            // Убираем индексы
+            for _,row := range newSheet.Rows {
+                for _,cell := range row.Cells {
+                    if cell != nil {
+                        if rxMergeIndex.MatchString(cell.Value) {                        
+                            cell.Value = rxMergeIndex.ReplaceAllString(cell.Value, "")
+                        }
+                    }
+                }
+            }            
         }
         return nil
     }
