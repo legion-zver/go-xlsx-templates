@@ -126,10 +126,11 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
             x, y, kW := 0.0, 0.0, w/getSheetWidth(sheet)
             for _, row := range sheet.Rows {
                 // Анализ и правка высоты ячейки
+                // Выставление шрифтов
                 for i, cell := range row.Cells {                    
                     if !cell.Hidden {                        
                         style := cell.GetStyle()
-                        if style != nil {
+                        if style != nil {                            
                             if !addFonts[style.Font.Name] {
                                 err := pdf.AddTTFFont(style.Font.Name, fontDir+"/"+style.Font.Name+".ttf")
                                 if err != nil {
@@ -143,34 +144,37 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                 fmt.Println(err)
                                 return nil
                             }
-                            mergeWidth, _ := getMergeSizesFromCell(cell)
-                            cellWidth := (sheet.Cols[i].Width+mergeWidth)*kW
-                            if textWidth, err := pdf.MeasureTextWidth(cell.Value); err == nil {                            
-                                if textWidth > cellWidth {
-                                    // Разбиваем по словам и начинаем сложение
-                                    words := strings.Split(cell.Value, " ")
-                                    newValue := ""
-                                    for _, word := range words {
-                                        if newTextWidth, err := pdf.MeasureTextWidth(newValue+" "+word); err == nil {
-                                            if newTextWidth > cellWidth {
-                                                if len(newValue) > 0 {
-                                                    newValue += " \n"
+                            // Только для WrapText
+                            if style.Alignment.WrapText {                       
+                                mergeWidth, _ := getMergeSizesFromCell(cell)
+                                cellWidth := (sheet.Cols[i].Width+mergeWidth)*kW
+                                if textWidth, err := pdf.MeasureTextWidth(cell.Value); err == nil {                            
+                                    if textWidth > cellWidth {
+                                        // Разбиваем по словам и начинаем сложение
+                                        words := strings.Split(cell.Value, " ")
+                                        newValue := ""
+                                        for _, word := range words {
+                                            if newTextWidth, err := pdf.MeasureTextWidth(newValue+" "+word); err == nil {
+                                                if newTextWidth > cellWidth {
+                                                    if len(newValue) > 0 {
+                                                        newValue += " \n"
+                                                    }
+                                                } else {
+                                                    if len(newValue) > 0 {
+                                                        newValue += " "
+                                                    }
                                                 }
+                                                newValue += word
                                             } else {
                                                 if len(newValue) > 0 {
                                                     newValue += " "
                                                 }
-                                            }
-                                            newValue += word
-                                        } else {
-                                            if len(newValue) > 0 {
-                                                newValue += " "
-                                            }
-                                            newValue += word
-                                        }                                      
-                                    }
-                                    cell.Value = newValue
-                                }                                
+                                                newValue += word
+                                            }                                      
+                                        }
+                                        cell.Value = newValue
+                                    }                                
+                                }
                             }
                         }
                     }
