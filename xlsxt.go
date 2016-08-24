@@ -284,6 +284,7 @@ func OpenTemplate(filename string) (*XlsxTemplateFile, error) {
         for _, row := range sheet.Rows {
             for _, cell := range row.Cells {
                 if style := cell.GetStyle(); style != nil {
+                    style.Alignment.WrapText = true
                     if len(style.Fill.FgColor) < 1 {
                         style.Fill.FgColor = "FFFFFFFF"
                         cell.SetStyle(style)
