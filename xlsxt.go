@@ -157,7 +157,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                             if newTextWidth, err := pdf.MeasureTextWidth(newValue+" "+word); err == nil {
                                                 if newTextWidth > cellWidth {
                                                     if len(newValue) > 0 {
-                                                        newValue += " \n"
+                                                        newValue += " \r\n"
                                                     }
                                                 } else {
                                                     if len(newValue) > 0 {
@@ -211,7 +211,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
 }
 
 func toPdfCellOption(style *xlsx.Style) gopdf.CellOption {
-    opt := gopdf.CellOption{}
+    opt := gopdf.CellOption{Float: gopdf.Right- }
     if style != nil {
         if style.Alignment.Horizontal == "center" {
             opt.Align = opt.Align | gopdf.Center
