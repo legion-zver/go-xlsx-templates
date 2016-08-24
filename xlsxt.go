@@ -1,15 +1,13 @@
 package xlsxt
 
 import (
-    "io"
-    //"os"
+    "io"    
     "fmt"
     "errors"
     "regexp"
     "reflect"
     "strings"   
-    "strconv"   
-    //"runtime"
+    "strconv"       
     "github.com/tealeg/xlsx"
     "github.com/signintech/gopdf"
     "github.com/aymerick/raymond"
@@ -127,10 +125,9 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
             pdf.SetX(0);pdf.SetY(0)            
             x, y, kW := 0.0, 0.0, w/getSheetWidth(sheet)
             for _, row := range sheet.Rows {
-                cellHeigth := row.Height
-                for i, cell := range row.Cells {
-                    cellWidth := sheet.Cols[i].Width*kW
-                    if !cell.Hidden {
+                // Анализ и правка высоты ячейки
+                for i, cell := range row.Cells {                    
+                    if !cell.Hidden {                        
                         style := cell.GetStyle()
                         if style != nil {
                             if !addFonts[style.Font.Name] {
@@ -146,8 +143,51 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                                 fmt.Println(err)
                                 return nil
                             }
+                            mergeWidth, _ := getMergeSizesFromCell(cell)
+                            cellWidth := (sheet.Cols[i].Width+mergeWidth)*kW
+                            if textWidth, err := pdf.MeasureTextWidth(cell.Value); err == nil {                            
+                                if textWidth > cellWidth {
+                                    // Разбиваем по словам и начинаем сложение
+                                    words := strings.Split(cell.Value, " ")
+                                    newValue := ""
+                                    for _, word := range words {
+                                        if newTextWidth, err := pdf.MeasureTextWidth(newValue+" "+word); err == nil {
+                                            if newTextWidth > cellWidth {
+                                                if len(newValue) > 0 {
+                                                    newValue += " \n"
+                                                }
+                                            } else {
+                                                if len(newValue) > 0 {
+                                                    newValue += " "
+                                                }
+                                            }
+                                            newValue += word
+                                        } else {
+                                            if len(newValue) > 0 {
+                                                newValue += " "
+                                            }
+                                            newValue += word
+                                        }                                      
+                                    }
+                                    cell.Value = newValue
+                                }                                
+                            }
                         }
-                        mergeWidth, mergeHeight := getMergeSizesFromCell(cell)                                                                                          
+                    }
+                }
+                cellHeigth := row.Height
+                for i, cell := range row.Cells {
+                    cellWidth := sheet.Cols[i].Width*kW
+                    if !cell.Hidden {
+                        style := cell.GetStyle()
+                        if style != nil {                            
+                            err := pdf.SetFont(style.Font.Name, getPdfFontStyleFromXLSXStyle(style), style.Font.Size)
+                            if err != nil {
+                                fmt.Println(err)
+                                return nil
+                            }
+                        }
+                        mergeWidth, mergeHeight := getMergeSizesFromCell(cell)
                         pdf.CellWithOption(&gopdf.Rect{
                             W: cellWidth+mergeWidth*kW,
                             H: cellHeigth+mergeHeight}, cell.Value, toPdfCellOption(style))                            
@@ -168,7 +208,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
 
 func toPdfCellOption(style *xlsx.Style) gopdf.CellOption {
     opt := gopdf.CellOption{}
-    if style != nil {        
+    if style != nil {
         if style.Alignment.Horizontal == "center" {
             opt.Align = opt.Align | gopdf.Center
         } else if style.Alignment.Horizontal == "left" {
