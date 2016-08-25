@@ -156,7 +156,7 @@ func convertXlsxToHTML(file *xlsx.File, landscape bool) string {
     if file != nil {
         html += "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\">\n"
         html += "<html>\n<head>\n"
-        html += "\t<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"/>\n<title></title>\n"
+        html += "\t<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"/>\n\t<title></title>\n"
         html += "\t<style type=\"text/css\">\n"
         if landscape {
             html += "\t\t@page { size: landscape }\n"
