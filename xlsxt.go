@@ -165,16 +165,20 @@ func convertXlsxToHTML(file *xlsx.File, landscape bool) string {
         html += "\t</style>\n"
         html += "</head>\n"
         html += "<body lang=\"ru-RU\" dir=\"ltr\">\n"
-        pageWidthCM := 21.0
+        pageWidthCM := 21.0*37.795276
         if landscape {
-            pageWidthCM = 29.7
+            pageWidthCM = 29.7*37.795276
         }
         for _, sheet := range file.Sheets {
             html += "\t<table cellpadding=\"2\" cellspacing=\"0\" style=\"page-break-before: always\">\n"            
             sizeWidth := getSheetWidth(sheet)
             // Устанавливаем размеры в процентах            
-            for _, col := range sheet.Cols {
-                html += "\t\t<col width=\""+strconv.FormatFloat((col.Width/sizeWidth)*pageWidthCM, 'f', -1, 64)+"cm\">\n"
+            for i, col := range sheet.Cols {
+                if i < sheet.MaxCol {
+                    html += "\t\t<col width=\""+strconv.FormatFloat((col.Width/sizeWidth)*pageWidthCM, 'f', -1, 64)+"\">\n"
+                } else {
+                    break
+                }
             }            
             // Проходимся по строкам
             for _, row := range sheet.Rows {
