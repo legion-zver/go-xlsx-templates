@@ -175,7 +175,7 @@ func convertXlsxToHTML(file *xlsx.File, landscape bool) string {
             // Устанавливаем размеры в процентах            
             for i, col := range sheet.Cols {
                 if i < sheet.MaxCol {
-                    html += "\t\t<col width=\""+strconv.FormatFloat((col.Width/sizeWidth)*pageWidthCM, 'f', -1, 64)+"\">\n"
+                    html += "\t\t<col width=\""+strconv.FormatInt(int64((col.Width/sizeWidth)*pageWidthCM), 10)+"\">\n"
                 } else {
                     break
                 }
