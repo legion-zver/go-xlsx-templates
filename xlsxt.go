@@ -181,10 +181,10 @@ func convertXlsxToHTML(file *xlsx.File, landscape bool) string {
                         html += "\t\t\t<td"
                         // Параметры ячейки
                         if cell.HMerge > 0 {
-                            html += " colspan=\""+strconv.FormatInt(int64(cell.HMerge),10)+"\""
+                            html += " colspan=\""+strconv.FormatInt(int64(cell.HMerge+1),10)+"\""
                         }
                         if cell.VMerge > 0 {
-                            html += " rowspan=\""+strconv.FormatInt(int64(cell.VMerge),10)+"\""
+                            html += " rowspan=\""+strconv.FormatInt(int64(cell.VMerge+1),10)+"\""
                         }
                         if style != nil {
                             // Выравнивани по высоте внутри ячейки
