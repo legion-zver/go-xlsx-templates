@@ -7,7 +7,8 @@ import (
     "regexp"
     "reflect"    
     "strings"   
-    "strconv"       
+    "strconv"  
+    "io/ioutil"     
     "github.com/tealeg/xlsx"
     "github.com/legion-zver/gopdf"
     "github.com/aymerick/raymond"
@@ -38,6 +39,42 @@ func (s *XlsxTemplateFile) Save(path string) error {
         return s.result.Save(path)		
     } else if s.template != nil {
         return s.template.Save(path)
+    }
+    return errors.New("Not load template xlsx file")
+}
+
+// SaveToHTML (XlsxTemplateFile) - сохраняем результат в PDF
+func (s *XlsxTemplateFile) SaveToHTML(path string) error {
+    var html string
+	if s.result != nil {
+        html = convertXlsxToHTML(s.result, true)
+    } else if s.template != nil {
+        html = convertXlsxToHTML(s.template, true)
+    }
+    if len(html) > 0 {        
+        err := ioutil.WriteFile(path, []byte(html), 0655)
+        if err != nil {
+            return err
+        }
+        return nil
+    }
+    return errors.New("Not load template xlsx file")
+}
+
+// WriteToHTML (XlsxTemplateFile) - сохраняем результат в PDF
+func (s *XlsxTemplateFile) WriteToHTML(writer io.Writer) error {
+    var html string
+	if s.result != nil {
+        html = convertXlsxToHTML(s.result, true)
+    } else if s.template != nil {
+        html = convertXlsxToHTML(s.template, true)
+    }
+    if len(html) > 0 {        
+        _, err := writer.Write([]byte(html))
+        if err != nil {
+            return err
+        }
+        return nil
     }
     return errors.New("Not load template xlsx file")
 }
@@ -112,10 +149,139 @@ func removeMergeCells(file *xlsx.File) {
     }
 }
 
+// convertXlsxToHTML - в HTML
+func convertXlsxToHTML(file *xlsx.File, landscape bool) string {
+    html := ""
+    removeMergeCells(file)
+    if file != nil {
+        html += "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\">\n"
+        html += "<html>\n<head>\n"
+        html += "\t<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"/>\n<title></title>\n"
+        html += "\t<style type=\"text/css\">\n"
+        if landscape {
+            html += "\t\t@page { size: landscape }\n"
+        }
+        html += "\t\ttd p, p { font-family: \"Liberation Sans\"; font-size: 10pt }\n"        
+        html += "\t</style>\n"
+        html += "</head>\n"
+        html += "<body lang=\"ru-RU\" dir=\"ltr\">\n"
+        for _, sheet := range file.Sheets {
+            html += "\t<table width=\"100%\" cellpadding=\"2\" cellspacing=\"0\" style=\"page-break-before: always\">\n"
+            sizeWidth := getSheetWidth(sheet)
+            // Устанавливаем размеры в процентах
+            for _, col := range sheet.Cols {                
+                html += "\t\t<col width=\""+strconv.FormatFloat((col.Width/sizeWidth)*100.0, 'f', -1, 64)+"%\">\n"
+            }
+            // Проходимся по строкам
+            for _, row := range sheet.Rows {
+                html += "\t\t<tr height=\""+strconv.FormatInt(int64(row.Height), 10)+"\">\n"
+                for _, cell := range row.Cells {
+                    if !cell.Hidden {
+                        style := cell.GetStyle()
+                        html += "\t\t\t<td"
+                        // Параметры ячейки
+                        if cell.HMerge > 0 {
+                            html += " colspan=\""+strconv.FormatInt(int64(cell.HMerge),10)+"\""
+                        }
+                        if cell.VMerge > 0 {
+                            html += " rowspan=\""+strconv.FormatInt(int64(cell.VMerge),10)+"\""
+                        }
+                        if style != nil {
+                            // Выравнивани по высоте внутри ячейки
+                            if style.ApplyAlignment {
+                                if len(style.Alignment.Vertical) > 0 && style.Alignment.Vertical != "none" {
+                                    html += " valign=\""+style.Alignment.Vertical+"\""
+                                }
+                            }
+                            // Бордер
+                            html += " style=\""
+                            if style.ApplyBorder {
+                                if len(style.Border.Top) > 0 && style.Border.Top != "none" {
+                                    html += "border-top: "+style.Border.Top+" solid "+style.Border.TopColor+"; "                                    
+                                } else {
+                                    html += "border-top: none; "    
+                                }
+                                if len(style.Border.Bottom) > 0 && style.Border.Bottom != "none" {
+                                    html += "border-bottom: "+style.Border.Bottom+" solid "+style.Border.BottomColor+"; "                                    
+                                } else {
+                                    html += "border-bottom: none; "    
+                                }
+                                if len(style.Border.Left) > 0 && style.Border.Left != "none" {
+                                    html += "border-left: "+style.Border.Left+" solid "+style.Border.LeftColor+"; "                                    
+                                } else {
+                                    html += "border-left: none; "    
+                                }
+                                if len(style.Border.Right) > 0 && style.Border.Right != "none" {
+                                    html += "border-right: "+style.Border.Right+" solid "+style.Border.RightColor+"; "                                    
+                                } else {
+                                    html += "border-right: none; "    
+                                }
+                            } else {
+                                html += "border: none; "                                
+                            }                            
+                            html += "padding: 0.05cm\""
+                        }
+                        html += ">\n" 
+                        // Контент
+                        html += "\t\t\t\t<p"
+                        if style != nil {
+                            if style.ApplyAlignment {
+                                if len(style.Alignment.Horizontal) > 0 && style.Alignment.Horizontal != "none" {
+                                    html += " align=\""+style.Alignment.Horizontal+"\""
+                                }
+                            }
+                        }
+                        html +=">"
+                        if style != nil {
+                            if style.ApplyFont {
+                                html += "<font"
+                                if len(style.Font.Name) > 0 {
+                                    html += " face=\""+style.Font.Name+"\""
+                                }
+                                html += ">"
+                                if style.Font.Bold {
+                                    html += "<b>"    
+                                }
+                                if style.Font.Italic {
+                                    html += "<i>"    
+                                }
+                                if style.Font.Underline {
+                                    html += "<u>"    
+                                }
+                            }
+                            html += cell.Value
+                            if style.ApplyFont {
+                                if style.Font.Underline {
+                                    html += "</u>"    
+                                }
+                                if style.Font.Italic {
+                                    html += "</i>"    
+                                }
+                                if style.Font.Bold {
+                                    html += "</b>"    
+                                }
+                                html += "</font>"
+                            }
+                        } else {
+                            html += cell.Value
+                        }
+                        html += "</p>\n"
+                        html += "\t\t\t</td>\n"
+                    }    
+                }
+                html += "\t\t</tr>\n"
+            }
+            html += "\t</table>\n"
+        }
+        html += "</body></html>"
+    }
+    return html
+}
+
 // convertXlsxToPdf - конвертирование XLSX в PDF
 func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
     removeMergeCells(file)
-    if file != nil {        
+    if file != nil {
         pdf := gopdf.GoPdf{}
         w, h := 841.89, 595.28        
         pdf.Start(gopdf.Config{Unit: "pt", PageSize: gopdf.Rect{W: w, H: h}})        
