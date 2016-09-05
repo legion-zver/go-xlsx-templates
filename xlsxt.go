@@ -18,6 +18,7 @@ var (
     rxTemplateItem  = regexp.MustCompile(`\{\{\s*([\w|\.]+)\s*\}\}`)
 	rxMergeCellV    = regexp.MustCompile(`\[\s?v-merge\s?\]`)
     rxMergeIndex    = regexp.MustCompile(`\[\s?index\s?:\s?[\d|\.|\,]+\s?\]`)
+    rxBrCellV       = regexp.MustCompile(`\[\s?BR\s?\]`)
 )
 
 
@@ -586,12 +587,22 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
             }
             graph = nil
 
-            // Убираем индексы [index:1]            
+            // Убираем индексы [index:1] и проверяем на [BR]         
             for _,row := range newSheet.Rows {
+                boldRightFlag := false
                 for _,cell := range row.Cells {
                     if cell != nil {
                         if rxMergeIndex.MatchString(cell.Value) {                        
                             cell.Value = rxMergeIndex.ReplaceAllString(cell.Value, "")
+                        }
+                        if rxBrCellV.MatchString(cell.Value) {
+                            cell.Value = rxBrCellV.ReplaceAllString(cell.Value, "")
+                            boldRightFlag = !boldRightFlag
+                        }
+                        if boldRightFlag {
+                            if s := cell.GetStyle(); s != nil {
+                                s.Font.Bold = true
+                            }                            
                         }
                     }
                 }
