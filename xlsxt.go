@@ -592,55 +592,57 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
                 boldRight := false
                 for _,cell := range row.Cells {
                     if cell != nil {
-                        if rxMergeIndex.MatchString(cell.Value) {                        
-                            cell.Value = rxMergeIndex.ReplaceAllString(cell.Value, "")
-                        }
-                        if rxBrCellV.MatchString(cell.Value) {
-                            cell.Value = rxBrCellV.ReplaceAllString(cell.Value, "")
-                            boldRight = !boldRight                            
-                        }
-                        if boldRight {    
-                            if style := cell.GetStyle(); style != nil {                                    
-                                boldRightStyle := xlsx.NewStyle()                                    
-                                boldRightStyle.ApplyAlignment         = style.ApplyAlignment
-                                boldRightStyle.ApplyBorder            = style.ApplyBorder
-                                boldRightStyle.ApplyFill              = style.ApplyFill
-                                boldRightStyle.ApplyFont              = style.ApplyFont                                    
+                        if len(cell.Value) > 0 {
+                            if rxMergeIndex.MatchString(cell.Value) {                        
+                                cell.Value = rxMergeIndex.ReplaceAllString(cell.Value, "")
+                            }
+                            if rxBrCellV.MatchString(cell.Value) {
+                                cell.Value = rxBrCellV.ReplaceAllString(cell.Value, "")
+                                boldRight = !boldRight                            
+                            }
+                            if boldRight && len(cell.Value) > 0 {    
+                                if style := cell.GetStyle(); style != nil {                                    
+                                    boldRightStyle := xlsx.NewStyle()                                    
+                                    boldRightStyle.ApplyAlignment         = style.ApplyAlignment
+                                    boldRightStyle.ApplyBorder            = style.ApplyBorder
+                                    boldRightStyle.ApplyFill              = style.ApplyFill
+                                    boldRightStyle.ApplyFont              = style.ApplyFont                                    
 
-                                if !boldRightStyle.ApplyFont {
-                                    boldRightStyle.ApplyFont = true
-                                } 
+                                    if !boldRightStyle.ApplyFont {
+                                        boldRightStyle.ApplyFont = true
+                                    } 
 
-                                boldRightStyle.Border.Bottom        = style.Border.Bottom
-                                boldRightStyle.Border.BottomColor   = style.Border.BottomColor
-                                boldRightStyle.Border.Left          = style.Border.Left
-                                boldRightStyle.Border.LeftColor     = style.Border.LeftColor
-                                boldRightStyle.Border.Top           = style.Border.Top
-                                boldRightStyle.Border.TopColor      = style.Border.TopColor
-                                boldRightStyle.Border.Right         = style.Border.Right
-                                boldRightStyle.Border.RightColor    = style.Border.RightColor 
+                                    boldRightStyle.Border.Bottom        = style.Border.Bottom
+                                    boldRightStyle.Border.BottomColor   = style.Border.BottomColor
+                                    boldRightStyle.Border.Left          = style.Border.Left
+                                    boldRightStyle.Border.LeftColor     = style.Border.LeftColor
+                                    boldRightStyle.Border.Top           = style.Border.Top
+                                    boldRightStyle.Border.TopColor      = style.Border.TopColor
+                                    boldRightStyle.Border.Right         = style.Border.Right
+                                    boldRightStyle.Border.RightColor    = style.Border.RightColor 
 
-                                boldRightStyle.Alignment.Horizontal   = style.Alignment.Horizontal
-                                boldRightStyle.Alignment.Indent       = style.Alignment.Indent
-                                boldRightStyle.Alignment.ShrinkToFit  = style.Alignment.ShrinkToFit
-                                boldRightStyle.Alignment.TextRotation = style.Alignment.TextRotation
-                                boldRightStyle.Alignment.Vertical     = style.Alignment.Vertical
-                                boldRightStyle.Alignment.WrapText     = style.Alignment.WrapText                                    
+                                    boldRightStyle.Alignment.Horizontal   = style.Alignment.Horizontal
+                                    boldRightStyle.Alignment.Indent       = style.Alignment.Indent
+                                    boldRightStyle.Alignment.ShrinkToFit  = style.Alignment.ShrinkToFit
+                                    boldRightStyle.Alignment.TextRotation = style.Alignment.TextRotation
+                                    boldRightStyle.Alignment.Vertical     = style.Alignment.Vertical
+                                    boldRightStyle.Alignment.WrapText     = style.Alignment.WrapText                                    
 
-                                boldRightStyle.Fill.BgColor     = style.Fill.BgColor
-                                boldRightStyle.Fill.FgColor     = style.Fill.FgColor
-                                boldRightStyle.Fill.PatternType = style.Fill.PatternType 
+                                    boldRightStyle.Fill.BgColor     = style.Fill.BgColor
+                                    boldRightStyle.Fill.FgColor     = style.Fill.FgColor
+                                    boldRightStyle.Fill.PatternType = style.Fill.PatternType 
 
-                                boldRightStyle.Font.Bold      = true
-                                boldRightStyle.Font.Charset   = style.Font.Charset
-                                boldRightStyle.Font.Color     = style.Font.Color
-                                boldRightStyle.Font.Family    = style.Font.Family
-                                boldRightStyle.Font.Italic    = style.Font.Italic
-                                boldRightStyle.Font.Name      = style.Font.Name
-                                boldRightStyle.Font.Size      = style.Font.Size
-                                boldRightStyle.Font.Underline = style.Font.Underline   
-                                cell.SetStyle(boldRightStyle)                                                           
-                            }                                                                                    
+                                    boldRightStyle.Font.Bold      = true
+                                    boldRightStyle.Font.Charset   = style.Font.Charset
+                                    boldRightStyle.Font.Color     = style.Font.Color
+                                    boldRightStyle.Font.Family    = style.Font.Family
+                                    boldRightStyle.Font.Italic    = style.Font.Italic
+                                    boldRightStyle.Font.Name      = style.Font.Name
+                                    boldRightStyle.Font.Size      = style.Font.Size
+                                    boldRightStyle.Font.Underline = style.Font.Underline   
+                                    cell.SetStyle(boldRightStyle)                                                           
+                                }                                                                                    
+                            }
                         }
                     }
                 }
