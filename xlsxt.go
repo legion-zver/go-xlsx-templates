@@ -597,12 +597,12 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
                         }
                         if rxBrCellV.MatchString(cell.Value) {
                             cell.Value = rxBrCellV.ReplaceAllString(cell.Value, "")
-                            boldRightFlag = !boldRightFlag
+                            boldRightFlag = !boldRightFlag                            
                         }
-                        if boldRightFlag {
-                            if s := cell.GetStyle(); s != nil {
-                                s.Font.Bold = true
-                            }                            
+                        if boldRightFlag {                            
+                            if style := cell.GetStyle(); style != nil {
+                                style.Font.Bold = boldRightFlag                                
+                            }
                         }
                     }
                 }
