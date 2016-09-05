@@ -600,13 +600,12 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
                             if boldRightStyle != nil {
                                 boldRightStyle = nil
                             } else {                
-                                if style := cell.GetStyle(); style != nil {
-                                    boldRightStyle := xlsx.NewStyle()
-                                    
+                                if style := cell.GetStyle(); style != nil {                                    
+                                    boldRightStyle = xlsx.NewStyle()                                    
                                     boldRightStyle.ApplyAlignment         = style.ApplyAlignment
                                     boldRightStyle.ApplyBorder            = style.ApplyBorder
                                     boldRightStyle.ApplyFill              = style.ApplyFill
-                                    boldRightStyle.ApplyFont              = style.ApplyFont
+                                    boldRightStyle.ApplyFont              = style.ApplyFont                                    
 
                                     if !boldRightStyle.ApplyFont {
                                         boldRightStyle.ApplyFont = true
@@ -632,7 +631,7 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
                                     boldRightStyle.Fill.FgColor     = style.Fill.FgColor
                                     boldRightStyle.Fill.PatternType = style.Fill.PatternType 
 
-                                    boldRightStyle.Font.Bold = true
+                                    boldRightStyle.Font.Bold      = true
                                     boldRightStyle.Font.Charset   = style.Font.Charset
                                     boldRightStyle.Font.Color     = style.Font.Color
                                     boldRightStyle.Font.Family    = style.Font.Family
@@ -643,7 +642,7 @@ func (s *XlsxTemplateFile) RenderTemplate(v interface{}) error {
                                 }
                             }
                         }
-                        if boldRightStyle != nil {
+                        if boldRightStyle != nil {                            
                             cell.SetStyle(boldRightStyle)                                                        
                         }
                     }
