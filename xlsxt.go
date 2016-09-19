@@ -376,7 +376,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                             }
                         }
                     }
-                }
+                }                
                 cellHeigth := row.Height
                 for i, cell := range row.Cells {
                     cellWidth := sheet.Cols[i].Width*kW
@@ -393,7 +393,7 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                         mergeWidth, mergeHeight := getMergeSizesFromCell(cell)
                         lines := strings.Split(cell.Value, "\n")
                         for lineIndex, line := range lines {
-                            line = strings.Replace(line, "₽", "руб.",-1)
+                            line = strings.Replace(line, "₽", "р.",-1)
                             if lineIndex < 1 {
                                 pdf.CellWithOption(&gopdf.Rect{
                                 W: cellWidth+mergeWidth*kW,
