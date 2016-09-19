@@ -306,27 +306,18 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                     if !cell.Hidden {                        
                         style := cell.GetStyle()
                         if style != nil {
-                            fontName := style.Font.Name
-                            if style.Font.Bold {
-                                if style.Font.Italic {
-                                    fontName += "-BoldItalic"    
-                                } else {
-                                    fontName += "-Bold"
-                                }
-                            } else if style.Font.Italic {
-                                fontName += "-Italic"
-                            }
-                            if !addFonts[style.Font.Name] {
-                                err := pdf.AddTTFFont(style.Font.Name, fontDir+"/"+fontName+".ttf")
+                            fontName := toPdfFont(style)                           
+                            if !addFonts[fontName] {
+                                err := pdf.AddTTFFont(fontName, fontDir+"/"+fontName+".ttf")
                                 if err != nil {
-                                    fmt.Println(err)
+                                    fmt.Println("Error load font: ", fontDir+"/"+fontName + ".ttf ", err)
                                     return nil
                                 }
-                                addFonts[style.Font.Name] = true
+                                addFonts[fontName] = true
                             }
                             err := pdf.SetFont(fontName, getPdfFontStyleFromXLSXStyle(style), style.Font.Size)
-                            if err != nil {
-                                fmt.Println(err)
+                            if err != nil {                                
+                                fmt.Println("Error set font: ", fontDir+"/"+fontName + ".ttf ", err)
                                 return nil
                             }
                             // Только для WrapText
@@ -391,16 +382,18 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                     cellWidth := sheet.Cols[i].Width*kW
                     if !cell.Hidden {
                         style := cell.GetStyle()
-                        if style != nil {                            
-                            err := pdf.SetFont(style.Font.Name, getPdfFontStyleFromXLSXStyle(style), style.Font.Size)
+                        if style != nil {
+                            fontName := toPdfFont(style)                            
+                            err := pdf.SetFont(fontName, getPdfFontStyleFromXLSXStyle(style), style.Font.Size)
                             if err != nil {
-                                fmt.Println(err)
+                                fmt.Println("Error set(2) font: ", fontDir+"/"+fontName + ".ttf ", err)
                                 return nil
                             }
                         }
                         mergeWidth, mergeHeight := getMergeSizesFromCell(cell)
                         lines := strings.Split(cell.Value, "\n")
                         for lineIndex, line := range lines {
+                            line = strings.Replace(line, "₽", "руб.",-1)
                             if lineIndex < 1 {
                                 pdf.CellWithOption(&gopdf.Rect{
                                 W: cellWidth+mergeWidth*kW,
@@ -430,6 +423,17 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
         return &pdf
     }
     return nil
+}
+
+func toPdfFont(style *xlsx.Style) string {
+    fontName := style.Font.Name        
+    if style.Font.Bold {        
+        fontName += "Bold"        
+    } 
+    if style.Font.Italic {
+        fontName += "Italic"
+    }
+    return fontName
 }
 
 func toPdfCellOption(style *xlsx.Style, skipBorder bool) gopdf.CellOption {
