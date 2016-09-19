@@ -305,16 +305,26 @@ func convertXlsxToPdf(file *xlsx.File, fontDir string) *gopdf.GoPdf {
                 for i, cell := range row.Cells {                    
                     if !cell.Hidden {                        
                         style := cell.GetStyle()
-                        if style != nil {                            
+                        if style != nil {
+                            fontName := style.Font.Name
+                            if style.Font.Bold {
+                                if style.Font.Italic {
+                                    fontName += "-BoldItalic"    
+                                } else {
+                                    fontName += "-Bold"
+                                }
+                            } else if style.Font.Italic {
+                                fontName += "-Italic"
+                            }
                             if !addFonts[style.Font.Name] {
-                                err := pdf.AddTTFFont(style.Font.Name, fontDir+"/"+style.Font.Name+".ttf")
+                                err := pdf.AddTTFFont(style.Font.Name, fontDir+"/"+fontName+".ttf")
                                 if err != nil {
                                     fmt.Println(err)
                                     return nil
                                 }
                                 addFonts[style.Font.Name] = true
                             }
-                            err := pdf.SetFont(style.Font.Name, getPdfFontStyleFromXLSXStyle(style), style.Font.Size)
+                            err := pdf.SetFont(fontName, getPdfFontStyleFromXLSXStyle(style), style.Font.Size)
                             if err != nil {
                                 fmt.Println(err)
                                 return nil
